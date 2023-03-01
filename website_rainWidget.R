@@ -162,10 +162,12 @@ server <- function(input, output, session) {
   # query api for xml based on systemtime #
   #        extract as data frame          #
   #########################################
-  
-  d.now <- lubridate::floor_date(lubridate::now(),"5 mins")
-  d.72  <- d.now-lubridate::hours(72)
+  #Sys.setenv(TZ='America/New York')
+  d.now <- lubridate::floor_date(lubridate::now(),"5 mins")-lubridate::hours(5)
+  print(paste0("The time in ET should be: ",d.now))
+  d.72  <- d.now-lubridate::hours(72+5)
   xml_address <- paste0("https://monitormywatershed.org/wofpy/rest/1_1/GetValues?location=envirodiy:BWPR-RIVA-01&variable=envirodiy:WEATHERtronics_6011_RainDepth&startDate=",paste0(lubridate::as_date(d.72),"T",sprintf("%02d:%02d:%02d", lubridate::hour(d.72), lubridate::minute(d.72), lubridate::second(d.72))),"&endDate=", paste0(lubridate::as_date(d.now),"T",sprintf("%02d:%02d:%02d", lubridate::hour(d.now), lubridate::minute(d.now), lubridate::second(d.now))))
+  print(xml_address)
   doc <- xml2::read_xml(xml_address)
   values <- xml2::xml_find_all(doc, "//d1:values")  
   query_res <- 
@@ -205,18 +207,18 @@ server <- function(input, output, session) {
   #  get rainfall totals for text output  #
   #########################################
    
-  total24 <- query_res %>% dplyr::filter(dateTime > lubridate::now()-lubridate::hours(24)) %>% dplyr::summarize(rain=sum(as.numeric(precip_mm)/25.4,na.rm = T)) %>% dplyr::pull(rain)
+  total24 <- query_res %>% dplyr::filter(dateTime > lubridate::now()-lubridate::hours(24+5)) %>% dplyr::summarize(rain=sum(as.numeric(precip_mm)/25.4,na.rm = T)) %>% dplyr::pull(rain)
   
   total72 <- query_res %>% dplyr::summarize(rain=sum(as.numeric(precip_mm)/25.4,na.rm = T)) %>% dplyr::pull(rain)
   
-  maxhr <- query_res %>% dplyr::filter(dateTime > lubridate::now()-lubridate::hours(24)) %>% 
+  maxhr <- query_res %>% dplyr::filter(dateTime > lubridate::now()-lubridate::hours(24+5)) %>% 
     dplyr::mutate(date=lubridate::as_date(dateTime),
                   hour=lubridate::hour(dateTime)) %>%
     dplyr::group_by(date,hour) %>%
     dplyr::summarise(hr_precip = sum(as.numeric(precip_mm)/25.4,na.rm=T)) %>% dplyr::pull(hr_precip) %>% max()
   
-  output$rainfall <- renderText({paste0("<b>The total rainfall in the past 72 hours is ", round(total72,2), 
-                                        " inches, with ", round(total24,2), " inches in the past 24 hours. The max hourly rainfall rate in the past 24 hours is ",
+  output$rainfall <- renderText({paste0("<b>The total rainfall in the past 72 hours was ", round(total72,2), 
+                                        " inches, with ", round(total24,2), " inches in the past 24 hours. The max hourly rainfall rate in the past 24 hours was ",
                                         round(maxhr,2), " inches per hour.</b>")})
    
 }
