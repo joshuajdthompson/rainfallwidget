@@ -163,9 +163,9 @@ server <- function(input, output, session) {
   #        extract as data frame          #
   #########################################
   #Sys.setenv(TZ='America/New York')
-  d.now <- lubridate::floor_date(lubridate::now(),"5 mins")-lubridate::hours(5)
+  d.now <- lubridate::floor_date(lubridate::now(),"5 mins")#-lubridate::hours(5)
   print(paste0("The time in ET should be: ",d.now))
-  d.72  <- d.now-lubridate::hours(72+5)
+  d.72  <- d.now-lubridate::hours(72)
   xml_address <- paste0("https://monitormywatershed.org/wofpy/rest/1_1/GetValues?location=envirodiy:BWPR-RIVA-01&variable=envirodiy:WEATHERtronics_6011_RainDepth&startDate=",paste0(lubridate::as_date(d.72),"T",sprintf("%02d:%02d:%02d", lubridate::hour(d.72), lubridate::minute(d.72), lubridate::second(d.72))),"&endDate=", paste0(lubridate::as_date(d.now),"T",sprintf("%02d:%02d:%02d", lubridate::hour(d.now), lubridate::minute(d.now), lubridate::second(d.now))))
   print(xml_address)
   doc <- xml2::read_xml(xml_address)
@@ -177,7 +177,8 @@ server <- function(input, output, session) {
       precip_mm = values %>% xml2::xml_find_all("./d1:value") %>% xml2::xml_text()
     ) %>%
     dplyr::mutate(dateTimeUTC = lubridate::as_datetime(dateTimeUTC),
-                  dateTime = lubridate::as_datetime(dateTime))
+                  dateTime = lubridate::as_datetime(dateTime)-lubridate::hours(5)) # this is now eastern time
+  print(query_res)
 
   #########################################
   #   make plot and create plotly plot    #
@@ -191,14 +192,14 @@ server <- function(input, output, session) {
     guides(fill=guide_legend("")) +
     xlab("") +
     theme(legend.position = "None",axis.text.x = element_text(angle = 0, vjust = 0, hjust=0.5,colour="black"),
-          strip.background = element_rect(fill="#0434a4"),
+          strip.background = element_rect(fill="#0072BC"),
           strip.text = element_text(colour = 'white',face="bold",size = 12),
           panel.background = element_blank(),
           panel.grid.major.x = element_line(size = 0.5, linetype = 'solid',
                                             colour = "lightgrey"),
           panel.grid.major.y = element_line(size = 0.5, linetype = 'solid',
                                             colour = "lightgrey"),
-          panel.border=element_rect(colour="#0434a4",size=1,fill=NA),
+          panel.border=element_rect(colour="#0072BC",size=1,fill=NA),
           axis.text.y=element_text(colour="black"),
           legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'), legend.spacing.x = unit(0, "pt"),legend.margin=margin(t=-0.5,l=0.05,b=0.05,r=0.05, unit='cm'))
   output$rainplot <- plotly::renderPlotly(plotly::ggplotly(p))
@@ -219,7 +220,7 @@ server <- function(input, output, session) {
   
   output$rainfall <- renderText({paste0("<b>The total rainfall in the past 72 hours was ", round(total72,2), 
                                         " inches, with ", round(total24,2), " inches in the past 24 hours. The max hourly rainfall rate in the past 24 hours was ",
-                                        round(maxhr,2), " inches per hour.</b>")})
+                                        round(maxhr,2), " inches per hour. Data are provisional.</b>")})
    
 }
 
